@@ -278,19 +278,19 @@ Always structure your response as follows:
 mcq_frq_generator = LlmAgent(
     name="mcq_frq_generator",
     model="gemini-2.5-flash",
-    instructions="Use the vertex_search_tool to investigate files ending with .md, and based off the query, extract the questions into the provided schema. If not, generate it from scratch.",
+    instruction="Use the vertex_search_tool to investigate files ending with .md, and based off the query, extract the questions into the provided schema. If not, generate it from scratch.",
     description="The agent administering the MCQs and the FRQs.",
-    output_schema=MCQ_FRQ_Practice()
+    output_schema=MCQ_FRQ_Practice
 )
 
-generator = AgentTool(agent=mcq_frq_generator)
+question_generator = AgentTool(agent=mcq_frq_generator)
 
 mcq_frq_agent = LlmAgent(
     name="mcq_frq_practice_administrator",
     model="gemini-2.5-flash",
     instruction=INSTRUCTIONS,
     description="The agent administering the MCQs and the FRQs.",
-    tools = [initiate_practice, submit_answer, practice_status, reset_practice, generator]
+    tools = [initiate_practice, submit_answer, practice_status, reset_practice, question_generator]
 )
 
 
