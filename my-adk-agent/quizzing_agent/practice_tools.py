@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
@@ -8,7 +9,6 @@ from google.adk.agents import Agent, LlmAgent
 from google.adk.tools import ToolContext, google_search
 from google.adk.tools.agent_tool import AgentTool
 from google.adk.tools.preload_memory_tool import PreloadMemoryTool
-from pydantic import BaseModel, Field
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
@@ -95,11 +95,12 @@ def initiate_practice(tool_context: ToolContext) -> Dict[str, Any]:
 
 def submit_answer(tool_context: ToolContext, answer: str) -> Dict[str, Any]:
     state = tool_context.state
-    i = state.get("mcq_question_index",0)
-    j = state.get("frq_question_index",0)
-    mcqs = state.get("mcqs")
-    frqs = state.get("frqs")
-    ans_str = (answer or  "").strip()
+    i = state.get("mcq_question_index", 0)
+    j = state.get("frq_question_index", 0)
+    mcqs = state.get("mcqs", [])
+    frqs = state.get("frqs", [])
+    ans_str = (answer or "").strip()
+    ans_lower = ans_str.lower()
 
     if i < len(mcqs):
         current_mcq = mcqs[i]
@@ -125,17 +126,15 @@ def submit_answer(tool_context: ToolContext, answer: str) -> Dict[str, Any]:
         if new_i < len(mcqs):
             next_q = mcqs[new_i]
             return {
-                 "correct": is_correct,
+                "correct": is_correct,
                 "feedback": feedback,
-                "next_question": next_q.question_text,
-                "options": next_q.options,
+                "next_question": _get(next_q, "question_text"),
+                "options": _get(next_q, "options") or [],
                 "type": "MCQ"
             }
-        
         elif len(frqs) > 0:
             # Transition to FRQs
             first_frq = frqs[0]
-            # Combine all parts into one display string for the agent
             frq_text = "\n".join([f"Part {idx+1}: {p.question_part_text}" for idx, p in enumerate(first_frq.question_parts)])
             return {
                 "correct": is_correct,
@@ -143,53 +142,57 @@ def submit_answer(tool_context: ToolContext, answer: str) -> Dict[str, Any]:
                 "next_question": frq_text,
                 "type": "FRQ"
             }
-        
-        elif j < len(frqs):
-            current_frq = frqs[j]
-            all_parts_correct = True
-            missed_concepts_this_frq = []
-            
-            # 1. Create a list to store the results of each part
-            part_results_summary = []
+        else:
+            return {
+                "correct": is_correct,
+                "feedback": feedback,
+                "status": "complete",
+                "type": "MCQ"
+            }
 
-            for idx, question_part in enumerate(current_frq.question_parts):
-                rubric = question_part.rubric
-                concept = question_part.concept
-                part_label = f"Part {chr(97 + idx)}" # Turns 0, 1, 2 into a, b, c
+    elif j < len(frqs):
+        current_frq = frqs[j]
+        missed_concepts_this_frq = []
+        part_results_summary = []
 
-                # Check if user mentioned all rubric keywords for THIS part
-                met_criteria = [item for item in rubric if item.lower() in ans_lower]
-                
-                if len(met_criteria) == len(rubric):
-                    part_results_summary.append(f"✅ {part_label}: Correct!")
-                else:
-                    all_parts_correct = False
-                    missed_concepts_this_frq.append(concept)
-                    
-                    # Identify exactly what was missing for the user
-                    missing = [item for item in rubric if item.lower() not in ans_lower]
-                    part_results_summary.append(f"❌ {part_label}: Missed (Missing: {', '.join(missing)})")
+        for idx, question_part in enumerate(current_frq.question_parts):
+            rubric = question_part.rubric
+            concept = question_part.concept
+            part_label = f"Part {chr(97 + idx)}"  # Turns 0, 1, 2 into a, b, c
 
-            # 2. Combine the summary into the final feedback string
-            if new_j < len(frqs):
-                next_frq_obj = frqs[new_j]
-                # Format the next FRQ text for the agent to show you
-                next_text = "\n".join([f"Part {k+1}: {p.question_part_text}" for k, p in enumerate(next_frq_obj.question_parts)])
-                
-                return {
-                    "feedback": f"Results for this question:\n{detailed_report}",
-                    "next_question": next_text,
-                    "missed_concepts": missed_concepts_this_frq, # Helps the chatbot explain things
-                    "type": "FRQ"
-                }
+            # Check if user mentioned all rubric keywords for THIS part
+            met_criteria = [item for item in rubric if item.lower() in ans_lower]
+
+            if len(met_criteria) == len(rubric):
+                part_results_summary.append(f"✅ {part_label}: Correct!")
             else:
-                # This was the final question!
-                return {
-                    "status": "complete",
-                    "feedback": f"Final Results:\n{detailed_report}\n\nGreat job! You have finished all the practice questions.",
-                    "missed_concepts": list(set(state.get("missed_concepts", []))),
-                    "type": "FRQ"
-                }
+                missed_concepts_this_frq.append(concept)
+                missing = [item for item in rubric if item.lower() not in ans_lower]
+                part_results_summary.append(f"❌ {part_label}: Missed (Missing: {', '.join(missing)})")
+
+        state.setdefault("missed_concepts", []).extend(missed_concepts_this_frq)
+        detailed_report = "\n".join(part_results_summary)
+        new_j = j + 1
+        state["frq_question_index"] = new_j
+
+        if new_j < len(frqs):
+            next_frq_obj = frqs[new_j]
+            next_text = "\n".join([f"Part {k+1}: {p.question_part_text}" for k, p in enumerate(next_frq_obj.question_parts)])
+            return {
+                "feedback": f"Results for this question:\n{detailed_report}",
+                "next_question": next_text,
+                "missed_concepts": missed_concepts_this_frq,
+                "type": "FRQ"
+            }
+        else:
+            return {
+                "status": "complete",
+                "feedback": f"Final Results:\n{detailed_report}\n\nGreat job! You have finished all the practice questions.",
+                "missed_concepts": list(set(state.get("missed_concepts", []))),
+                "type": "FRQ"
+            }
+
+    return {"error": "No active question found or practice is finished."}
 
 def practice_status(tool_context: ToolContext, topic_id: str) -> Dict[str, Any]:
     state = tool_context.state
@@ -199,7 +202,7 @@ def practice_status(tool_context: ToolContext, topic_id: str) -> Dict[str, Any]:
     frq_amount = state.get("frq_amount", 0)
     missed_concepts = state.get("missed_concepts", [])
 
-    if mcq_amount and frq_amount > 0:
+    if mcq_amount > 0 and frq_amount > 0:
         if mcq_index < mcq_amount and frq_index < frq_amount:
             return {"status": "The MCQ/FRQ practice has not been completed; complete all questions to get feedback and topics to study."}
         else:
@@ -238,10 +241,10 @@ def reset_practice(tool_context: ToolContext, topic_id: str) -> Dict[str, Any]:
             "first_question": _get(mcq0, "question_text"),
             "first_question_options": _get(mcq0, "options") or [],
             "question_number": 1,
-            "total_questions": len(questions),
+            "total_questions": len(mcqs) + len(frqs),
         }
 
-    pass
+    return {"status": "error", "message": "No questions available to reset."}
     
 def vertex_search_tool(toolcontext: ToolContext, topic_id: str) -> Dict[str, Any]:
     base_dir = "/Google-ADK-Quizzing-Thing-/chem_pdfs"
@@ -278,9 +281,10 @@ Always structure your response as follows:
 mcq_frq_generator = LlmAgent(
     name="mcq_frq_generator",
     model="gemini-2.5-flash",
-    instructions="Use the vertex_search_tool to investigate files ending with .md, and based off the query, extract the questions into the provided schema. If not, generate it from scratch.",
+    instruction="Use the vertex_search_tool to investigate files ending with .md, and based off the query, extract the questions into the provided schema. If not, generate it from scratch.",
     description="The agent administering the MCQs and the FRQs.",
-    output_schema=MCQ_FRQ_Practice()
+    output_schema=MCQ_FRQ_Practice,
+    tools=[vertex_search_tool]
 )
 
 generator = AgentTool(agent=mcq_frq_generator)

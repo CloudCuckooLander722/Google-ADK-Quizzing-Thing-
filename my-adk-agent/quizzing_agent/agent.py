@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from practice_tools import *
+from .practice_tools import *
 
 # Load .env from the same folder as this script (works no matter where you run from)
 load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -19,7 +19,6 @@ from google.adk.tools.preload_memory_tool import PreloadMemoryTool
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List
 import vertexai
-from practice_tools import MCQ_FRQ_Practice
 
 print("✅ ADK components imported successfully.")
 
