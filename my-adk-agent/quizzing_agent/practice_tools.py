@@ -287,14 +287,14 @@ mcq_frq_generator = LlmAgent(
     tools=[vertex_search_tool]
 )
 
-generator = AgentTool(agent=mcq_frq_generator)
+question_generator = AgentTool(agent=mcq_frq_generator)
 
 mcq_frq_agent = LlmAgent(
     name="mcq_frq_practice_administrator",
     model="gemini-2.5-flash",
     instruction=INSTRUCTIONS,
     description="The agent administering the MCQs and the FRQs.",
-    tools = [initiate_practice, submit_answer, practice_status, reset_practice, generator]
+    tools = [initiate_practice, submit_answer, practice_status, reset_practice, question_generator]
 )
 
 

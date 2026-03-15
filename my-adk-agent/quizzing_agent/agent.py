@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-
 from dotenv import load_dotenv
 from .practice_tools import *
 
@@ -19,6 +18,7 @@ from google.adk.tools.preload_memory_tool import PreloadMemoryTool
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List
 import vertexai
+from practice_tools import MCQ_FRQ_Practice, mcq_frq_generator, mcq_frq_agent
 
 print("✅ ADK components imported successfully.")
 
@@ -64,22 +64,6 @@ CRITICAL RULES:
 - Never say "I can't generate a quiz." If you lack questions, call `generator_tool`.
 - Never give second chances on a question. One answer, one `submit_answer` call, move on.
 """
-
-search_agent = LlmAgent(
-    model="gemini-2.5-flash",
-    name="search_agent",
-    description="Specialist in searching for and generating academic chemistry problems.",
-    instruction="""
-    You are an expert chemistry researcher. When asked to provide quiz problems:
-    1. Use the search tool to find specific AP Chemistry Unit 6 concepts (Thermochemistry).
-    2. Format the output as a valid JSON-like object or clear text that the Quiz Agent can parse.
-    3. Ensure problems include multiple-choice options and a clear correct answer.
-    """,
-    output_key="generated_quiz",
-    output_schema=GeneratedQuiz,
-    tools=[google_search] # Grounded with real search results
-)
-
 
 def start_quiz(tool_context: ToolContext,) -> Dict[str, Any]:
     state = tool_context.state
@@ -251,35 +235,60 @@ generator_agent = LlmAgent(
     name='generator_agent',
     instruction="Based off user prompt, search up relevant concepts and problems. Create a set of problems for a quiz and express them in JSON format.",
     output_schema=GeneratedQuiz,
-    output_key="generated_quiz"
-)
-
-extraction_agent = LlmAgent(
-    name="ap_chem_extractor",
-    model="gemini-2.0-flash",
-    instruction="""
-    You are an expert AP Chemistry assistant. 
-    Process the provided MCQ/FRQ packets and extract questions.
-    For each MCQ, identify the topic, text, options, and correct answer.
-    For each FRQ, break it into parts and identify the key rubric points.
-    Ensure every field in the output schema is populated accurately.
-    """,
-    output_schema=MCQ_FRQ_Practice,
-    tools=[vertex_search_tool],
-    output_key="generated_practice"
+    output_key="generated_quiz",
+    
 )
 
 generator_tool = AgentTool(agent=generator_agent)
 
-extraction_tool = AgentTool(agent=extraction_agent)
+mcq_frq_generator_tool = AgentTool(agent=mcq_frq_generator)
 
-mcq_frq_tool = AgentTool(agent=mcq_frq_agent)
-
-root_agent = Agent(
+conceptual_agent = Agent(
     name="quiz_master",
     model='gemini-2.5-flash',
     instruction=QUIZ_INSTRUCTIONS,
     description="The agent that manages the quizzing process.",
-    tools=[start_quiz, submit_answer, get_quiz_status, reset_quiz, memory_tool, generator_tool, mcq_frq_tool]
+    tools=[start_quiz, submit_answer, get_quiz_status, reset_quiz, generator_tool],
+    
 )
+
+ROOT_INSTRUCTIONS = """
+# ROLE
+You are the AP Chemistry Practice Coordinator. Your goal is to guide students to the most effective learning mode based on their needs.
+
+# WORKFLOW
+1. **Topic Identification**: Determine which AP Chemistry topic (e.g., Topic 8.7: pH and pKa) the user wants to study. If they are vague, ask clarifying questions.
+2. **Mode Selection**: 
+   - If the user wants structured practice (MCQs or FRQs), generate the materials using the 'mcq_frq_generator' tool, then transfer control to the 'mcq_frq_practice_administrator'.
+   - If the user wants to explore a topic deeply or needs a concept explained via dialogue, transfer control to the 'conceptual_quizzing_agent'.
+3. **Session Handoff**: When transferring, briefly summarize what you've prepared (e.g., "I've generated a quiz on Topic 8.7 for you. Handing you over to the proctor now.")
+
+# PEDAGOGICAL GUIDELINES
+- Focus on learning, not just correctness. 
+- Ensure that the session state is initialized before handing over to sub-agents.
+- If a sub-agent returns control to you, ask the student if they would like to switch topics or try a different practice mode.
+
+Use code with caution.
+
+🛠️ Key points:
+The agent is instructed to transfer control rather than doing the work itself.
+The mcq_frq_generator runs before the handoff.
+The agent prioritizes topic understanding.
+⚠️ Important:
+Ensure the mcq_frq_agent description is distinct.
+Bad Description: "An agent for questions."
+Good Description: "Specialist for administering Multiple Choice (MCQ) and Free Response (FRQ) questions. Transfer here only after quiz data is generated."
+"""
+
+root_agent = Agent(
+    name="master_agent",
+    model="gemini-2.0-flash", 
+    description="The primary entry point for AP Chemistry study. Routes students to MCQ/FRQ practice or conceptual deep-dives.",
+    instruction=ROOT_INSTRUCTIONS,
+    sub_agents=[conceptual_agent, mcq_frq_agent],
+    tools=[generator_tool, mcq_frq_generator_tool, memory_tool],
+    
+)
+
+
 

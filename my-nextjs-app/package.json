@@ -1,0 +1,29 @@
+{
+    "name": "my-nextjs-app",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+      "dev": "next dev",
+      "build": "next build",
+      "start": "next start",
+      "lint": "next lint"
+    },
+    "dependencies": {
+      "@copilotkit/react-core": "^1.10.0",
+      "@copilotkit/react-ui": "^1.10.0",
+      "@copilotkit/runtime": "^1.10.0",
+      "next": "latest",
+      "react": "latest",
+      "react-dom": "latest",
+      "lucide-react": "latest"
+    },
+    "devDependencies": {
+      "typescript": "latest",
+      "@types/node": "latest",
+      "@types/react": "latest",
+      "@types/react-dom": "latest",
+      "postcss": "latest",
+      "tailwindcss": "latest"
+    }
+  }
+  
