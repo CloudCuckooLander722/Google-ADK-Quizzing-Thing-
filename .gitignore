@@ -1,0 +1,4 @@
+*.json
+.env
+.venv/
+node_modules

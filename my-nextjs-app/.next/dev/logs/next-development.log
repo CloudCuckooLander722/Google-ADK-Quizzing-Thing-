@@ -1,0 +1,7 @@
+[00:00:02.209] Server  LOG     ✓ Ready in 1180ms
+[00:17:46.196] Server  ERROR   ⨯ Error: ENOENT: no such file or directory, open '/Users/minh/Google-ADK-Quizzing-Thing-/my-nextjs-app/.next/dev/server/app/page/build-manifest.json'
+[00:17:46.313] Server  ERROR   Error: ENOENT: no such file or directory, open '/Users/minh/Google-ADK-Quizzing-Thing-/my-nextjs-app/.next/dev/server/app/page/build-manifest.json'
+[00:17:46.363] Server  ERROR   Error: ENOENT: no such file or directory, open '/Users/minh/Google-ADK-Quizzing-Thing-/my-nextjs-app/.next/dev/server/pages/_app/build-manifest.json'
+[00:17:47.512] Server  ERROR   ⨯ Error: ENOENT: no such file or directory, open '/Users/minh/Google-ADK-Quizzing-Thing-/my-nextjs-app/.next/dev/server/app/page/build-manifest.json'
+[00:17:47.632] Server  ERROR   Error: ENOENT: no such file or directory, open '/Users/minh/Google-ADK-Quizzing-Thing-/my-nextjs-app/.next/dev/server/app/page/build-manifest.json'
+[00:17:47.681] Server  ERROR   Error: ENOENT: no such file or directory, open '/Users/minh/Google-ADK-Quizzing-Thing-/my-nextjs-app/.next/dev/server/pages/_app/build-manifest.json'
