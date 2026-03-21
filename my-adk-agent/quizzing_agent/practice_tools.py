@@ -289,9 +289,20 @@ mcq_frq_generator = LlmAgent(
     name="mcq_frq_generator",
     model="gemini-2.0-flash", # Note: use 2.0-flash unless 2.5 is actually out
     instruction="""
-    1. Call the 'search_agent' tool to find real AP Chemistry questions for the requested topic.
-    2. Extract the questions from the search results into the provided schema.
-    3. If the search tool returns no results, generate original questions from scratch.
+    # OBJECTIVE
+    Generate AP Chemistry questions that mimic the official College Board difficulty and 'tricky' wording.
+
+    # STEP 1: RESEARCH
+    Call 'search_agent' to find actual released AP Chem questions for the topic. Use these as a template for style and complexity. In addition, find related articles to the topic as a means of background research.
+
+    # STEP 2: QUESTION DESIGN RULES
+    - **No Simple Recall**: Do not ask for definitions. Ask how a change in one variable (e.g., Temperature) affects a result (e.g., Keq or Voltage).
+    - **Distractor Logic**: Create 'attractive distractors' based on common student misconceptions (e.g., forgetting to convert Celsius to Kelvin, or flipping the sign of ΔG).
+    - **Context-Heavy**: Every FRQ must start with a 'Scenario' (e.g., "A student performs a titration...") or a set of data/table.
+    - **Wording**: Use standard AP phrases like "Justify your answer in terms of intermolecular forces," "Which of the following best explains," or "In a particulate representation..."
+
+    # STEP 3: OUTPUT
+    Extract or generate 3 MCQs and 1 multi-part FRQ into the provided schema. If search fails, synthesize questions based on the current Course and Exam Description (CED).
     """,
     description="The agent generating structured MCQs and FRQs.",
     output_schema=MCQ_FRQ_Practice,
