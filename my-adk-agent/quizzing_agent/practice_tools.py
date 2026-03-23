@@ -10,6 +10,7 @@ from google.adk.tools.agent_tool import AgentTool
 from google.adk.tools.preload_memory_tool import PreloadMemoryTool
 from pydantic import BaseModel, Field
 from google.adk.tools.google_search_tool import GoogleSearchTool
+from google.genai import types
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
@@ -302,12 +303,15 @@ mcq_frq_generator = LlmAgent(
     - **Wording**: Use standard AP phrases like "Justify your answer in terms of intermolecular forces," "Which of the following best explains," or "In a particulate representation..."
 
     # STEP 3: OUTPUT
-    Extract or generate 3 MCQs and 1 multi-part FRQ into the provided schema. If search fails, synthesize questions based on the current Course and Exam Description (CED).
+    Extract or generate the EXACT number of MCQs and FRQs requested into the provided schema. If search fails, synthesize questions based on the current Course and Exam Description (CED).
     """,
     description="The agent generating structured MCQs and FRQs.",
     output_schema=MCQ_FRQ_Practice,
-    # This is correct: it only sees an AgentTool (which looks like a standard function)
-    tools=[AgentTool(agent=search_agent)] 
+    tools=[AgentTool(agent=search_agent)],
+    generate_content_config=types.GenerateContentConfig(
+        temperature=0.2, # More deterministic output
+        max_output_tokens=8192
+    )
 )
 
 question_generator = AgentTool(agent=mcq_frq_generator)
