@@ -10,12 +10,14 @@ from google.genai import types
 from agent import root_agent
 from google.cloud import aiplatform
 
+
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/minh/Google-ADK-Quizzing-Thing-/gen-lang-client-0565764733-9a7f3e900865.json"
 project_id = os.environ.get("GCP_PROJECT_ID")
 client = Client(
     project=project_id,
     location="us-central1",
 )
+
 
 
 agent_engine = client.agent_engines.create()
