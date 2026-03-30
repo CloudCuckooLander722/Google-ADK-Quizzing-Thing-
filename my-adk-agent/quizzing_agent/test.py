@@ -9,6 +9,7 @@ from google.adk.runners import Runner
 from google.genai import types
 from agent import root_agent
 from google.cloud import aiplatform
+from tenacity import retry, wait_random_exponential, stop_after_attempt
 
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/minh/Google-ADK-Quizzing-Thing-/gen-lang-client-0565764733-9a7f3e900865.json"
@@ -50,6 +51,8 @@ async def setup_session_and_runner():
     
     return session, runner
 
+@retry(wait=wait_random_exponential(multiplier=1, max=60),
+    stop=stop_after_attempt(5))
 async def run_single_turn(query, session, user_id, runner):
         """Run a single conversation turn."""
         content = types.Content(role="user", parts=[types.Part(text=query)])
@@ -61,7 +64,6 @@ async def run_single_turn(query, session, user_id, runner):
                 response_content = event.content.parts[0].text
                 
         return response_content
-
 
 async def chat_loop(session, user_id, runner) -> None:
             """Main chat interface loop."""
@@ -81,6 +83,10 @@ async def chat_loop(session, user_id, runner) -> None:
             completed_session = await runner.session_service.get_session(app_name=app_name, user_id=USER_ID, session_id=session.id)
             
             await memory_service.add_session_to_memory(completed_session)
+
+
+
+
 
 def run_session():
 

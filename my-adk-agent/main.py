@@ -1,11 +1,29 @@
-from quizzing_agent import root_agent
+from quizzing_agent.agent import root_agent
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
+import google.api_core.exceptions as exceptions
+from google.api_core import retry
 
 app = FastAPI(title="ADK Quizzing Agent")
-agent = ADKAgent(adk_agent=root_agent, app_name="quiz_master", user_id="default")
-add_adk_fastapi_endpoint(app, agent, path="/")
+
+adk_agent_wrapper = ADKAgent(adk_agent=root_agent, app_name="quiz_master", user_id="default", session_timeout_seconds=3600, use_in_memory_services=True)
+
+add_adk_fastapi_endpoint(app, adk_agent_wrapper, path="/")
+
+@app.exception_handler(exceptions.ResourceExhausted)
+async def rate_limit_handler(request: Request, exc: exceptions.ResourceExhausted):
+    return JSONResponse(
+        status_code=429,
+        content={
+            "error": "Rate limit exceeded",
+            "message": "The Quiz Master is taking a breather. Please wait a few seconds or refresh the chat!"
+        },
+    )
+
+
+
 
 if __name__ == "__main__":
     import os
