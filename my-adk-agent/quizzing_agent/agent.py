@@ -16,7 +16,8 @@ from google.adk.tools.preload_memory_tool import PreloadMemoryTool
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List
 import vertexai
-from practice_tools import MCQ_FRQ_Practice, mcq_frq_generator, mcq_frq_agent
+from practice_tools import MCQ_FRQ_Practice, mcq_frq_generator, mcq_frq_agent, search_agent
+from google.genai import types
 
 print("✅ ADK components imported successfully.")
 
@@ -231,8 +232,10 @@ if project_id:
 generator_agent = LlmAgent(
     model='gemini-2.5-flash',
     name='generator_agent',
-    instruction="Based off user prompt, search up relevant concepts and problems. Create a set of problems for a quiz and express them in JSON format.",
+    instruction="Based off user prompt, if AP Chemistry (e.g. Topic 9.3), use search_agent to find the topic's CED. Create a set of problems (application heavy and concept heavy) for a quiz and express them in JSON format.",
     output_schema=GeneratedQuiz,
+    tools=[AgentTool(agent=search_agent)],
+    generate_content_config=types.GenerateContentConfig(temperature=0.2, max_output_tokens=8192),
     output_key="generated_quiz",
     
 )

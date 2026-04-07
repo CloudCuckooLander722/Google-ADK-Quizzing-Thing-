@@ -12,6 +12,18 @@ adk_agent_wrapper = ADKAgent(adk_agent=root_agent, app_name="quiz_master", user_
 
 add_adk_fastapi_endpoint(app, adk_agent_wrapper, path="/")
 
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exceptions: Exception):
+    print(f"❌ Internal Error: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal Server Error",
+            "message": "The agent hit a snag. Please check your API key or connection."
+        },
+    )
+
+
 @app.exception_handler(exceptions.ResourceExhausted)
 async def rate_limit_handler(request: Request, exc: exceptions.ResourceExhausted):
     return JSONResponse(

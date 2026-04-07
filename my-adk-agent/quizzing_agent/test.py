@@ -59,6 +59,7 @@ async def run_single_turn(query, session, user_id, runner):
         events = runner.run_async(user_id=user_id, session_id=session.id, new_message=content)
 
         response_content = None
+        
         async for event in events:
             if event.is_final_response():
                 response_content = event.content.parts[0].text
